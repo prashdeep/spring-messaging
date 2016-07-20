@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:jms="http://www.springframework.org/schema/jms"
+	xmlns:jee="http://www.springframework.org/schema/jee"
+	xsi:schemaLocation="http://www.springframework.org/schema/jms http://www.springframework.org/schema/jms/spring-jms-4.3.xsd
+		http://www.springframework.org/schema/jee http://www.springframework.org/schema/jee/spring-jee-4.3.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.3.xsd">
+
+	<context:annotation-config></context:annotation-config>
+	
+	<bean id="jmsSenderClient" class="com.jms.spring.integration.JmsSenderClient"></bean>
+	
+	<bean class="org.springframework.jms.core.JmsTemplate">
+	 <property name="connectionFactory" ref="jndi"></property>
+	 <property name="defaultDestination" value="myqueue"></property>
+	 <property name="destinationResolver" ref="jndiDestinationResolver"></property>
+	</bean>
+	
+	<bean id="activeMQConnectionFactory" class="org.apache.activemq.ActiveMQConnectionFactory">
+	   <property name="brokerURL" value="tcp://localhost:61616"></property>
+	</bean>
+	
+	<jee:jndi-lookup id="jndi"  jndi-name="jndi-env"></jee:jndi-lookup>
+	
+	<bean id="jndiDestinationResolver" class="org.springframework.jms.support.destination.JndiDestinationResolver">
+	<property name="jndiEnvironment" ref="jndi"></property>
+	</bean>
+
+</beans>

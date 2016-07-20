@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:jms="http://www.springframework.org/schema/jms"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:int="http://www.springframework.org/schema/integration"
+	xmlns:int-jms="http://www.springframework.org/schema/integration/jms"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xsi:schemaLocation="http://www.springframework.org/schema/jms http://www.springframework.org/schema/jms/spring-jms-4.0.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.0.xsd
+		http://www.springframework.org/schema/integration/jms http://www.springframework.org/schema/integration/jms/spring-integration-jms-4.3.xsd
+		http://www.springframework.org/schema/integration http://www.springframework.org/schema/integration/spring-integration-4.3.xsd">
+
+	<int:channel id="processEmpChannel">
+	 <!--  <int:interceptors>
+	    <int:wire-tap channel="logger"></int:wire-tap>
+	  </int:interceptors> -->
+	</int:channel>
+	
+	<!-- <int:logging-channel-adapter channel="logger" level="DEBUG" log-full-message="true"> </int:logging-channel-adapter> -->
+	
+	<!-- <int:channel id="logger"></int:channel> -->
+
+	<int:channel id="jmsInboundChannel"></int:channel>
+
+	<int:channel id="ipParkMessageChannel"></int:channel>
+
+	<int:channel id="deleteF5MessageChannel"></int:channel>
+
+	<int:channel id="deleteACLMessageChannel"></int:channel>
+
+	<int-jms:message-driven-channel-adapter
+		channel="processEmpChannel" destination-name="com.test.inputqueue"
+		acknowledge="transacted"  />
+
+
+	<int:router input-channel="processEmpChannel"
+	expression="#jsonPath(payload,'$.action_name')">
+		<int:mapping value="IPPark" channel="ipParkMessageChannel" />
+		<int:mapping value="LTMdecomm" channel="deleteF5MessageChannel" />
+		<int:mapping value="Delete_ACL" channel="deleteACLMessageChannel" />
+	</int:router>
+
+
+	<bean id="connectionFactory"
+		class="org.springframework.jms.connection.CachingConnectionFactory">
+		<property name="targetConnectionFactory" ref="targetConnectionFactory"></property>
+		<property name="sessionCacheSize" value="10"></property>
+		<property name="cacheProducers" value="false"></property>
+	</bean>
+	<bean id="targetConnectionFactory" class="org.apache.activemq.ActiveMQConnectionFactory">
+		<property name="brokerURL" value="tcp://localhost:61616"></property>
+		<property name="redeliveryPolicy">
+			<bean class="org.apache.activemq.RedeliveryPolicy">
+				<property name="maximumRedeliveries" value="5" />
+			</bean>
+		</property>
+	</bean>
+
+	<bean id="jmsTemplate" class="org.springframework.jms.core.JmsTemplate">
+		<property name="connectionFactory" ref="connectionFactory"></property>
+		<property name="sessionTransacted" value="true"></property>
+	</bean>
+
+	<bean id="springExample" class="com.jms.spring.integration.SpringIntegrationJmsExample">
+		<property name="jmsTemplate" ref="jmsTemplate"></property>
+	</bean>
+
+	<int:service-activator input-channel="ipParkMessageChannel"
+		ref="springExample" method="handleIPPark">
+	</int:service-activator>
+
+	<int:service-activator input-channel="deleteF5MessageChannel"
+		ref="springExample" method="handleDeleteF5FromDevice">
+	</int:service-activator>
+	<int:service-activator input-channel="deleteACLMessageChannel"
+		ref="springExample" method="deleteACLMessageChannel">
+	</int:service-activator>
+</beans>
