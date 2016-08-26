@@ -17,7 +17,7 @@
 
     <!-- Destination Queue -->
     <bean id="destinationQueue" class="org.apache.activemq.command.ActiveMQQueue">
-        <constructor-arg index="0" value="IN_QUEUE" />
+        <constructor-arg index="0" value="Intuit.global.dev.pi.computereturns.NetgenieV1.Queue" />
     </bean>
 
     <!-- JmsTemplate Definition -->
@@ -36,7 +36,7 @@
     <bean
         class="org.springframework.jms.listener.DefaultMessageListenerContainer">
         <property name="connectionFactory" ref="connectionFactory" />
-        <property name="destinationName" value="IN_QUEUE" />
+        <property name="destinationName" value="Intuit.global.dev.pi.computereturns.NetgenieV1.Queue" />
         <property name="messageListener" ref="messageDefaultConsumer" />
     </bean>
 

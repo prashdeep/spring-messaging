@@ -24,43 +24,10 @@
 		http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-4.3.xsd">
 
 	<beans profile="dev">
-		<import resource="classpath:activemq-properties.xml" />
 		<import resource="classpath:activemq-jms.xml" />
-		<!-- Embedded ActiveMQ Broker -->
-		<!-- <amq:connectionFactory id="amqConnectionFactory" brokerURL="tcp://localhost:61616" 
-			userName="consumer" password="password" /> -->
 
 		<amq:broker id="broker" useJmx="false" persistent="false">
 
-			<!-- <amq:plugins>
-				<amq:simpleAuthenticationPlugin>
-					<amq:users>
-						<amq:authenticationUser username="pradeep"
-							password="welcome" groups="producers,consumers,admins" />
-					</amq:users>
-				</amq:simpleAuthenticationPlugin>
-				<amq:authorizationPlugin>
-					<map>
-						<authorizationMap>
-						<amq:authorizationEntries></amq:authorizationEntries>
-						<amq:defaultEntry></amq:defaultEntry>
-						<amq:tempDestinationAuthorizationEntry></amq:tempDestinationAuthorizationEntry>
-						<amq:entries></amq:entries>
-						
-							<authorizationEntries>
-								<authorizationEntry queue="test" write="producers"
-									read="consumers" admin="admins" />
-								<authorizationEntry topic="ActiveMQ.Advisory.>"
-									read="producers" write="producers" admin="admins" />
-							</authorizationEntries>
-							<tempDestinationAuthorizationEntry>
-								<tempDestinationAuthorizationEntry
-									read="admin" write="admin" admin="admin" />
-							</tempDestinationAuthorizationEntry>
-						</authorizationMap>
-					</map>
-				</amq:authorizationPlugin>
-			</amq:plugins> -->
 			<amq:transportConnectors>
 				<amq:transportConnector uri="tcp://localhost:61616" />
 			</amq:transportConnectors>
