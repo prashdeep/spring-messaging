@@ -4,76 +4,179 @@
 	xmlns:context="http://www.springframework.org/schema/context"
 	xmlns:int="http://www.springframework.org/schema/integration"
 	xmlns:int-jms="http://www.springframework.org/schema/integration/jms"
-	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:tx="http://www.springframework.org/schema/tx" xmlns:jee="http://www.springframework.org/schema/jee"
+	xmlns:aop="http://www.springframework.org/schema/aop" xmlns:util="http://www.springframework.org/schema/util"
+	xmlns:amq="http://activemq.apache.org/schema/core" xmlns:task="http://www.springframework.org/schema/task"
+	xmlns:int-jdbc="http://www.springframework.org/schema/integration/jdbc"
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc"
 	xsi:schemaLocation="http://www.springframework.org/schema/jms http://www.springframework.org/schema/jms/spring-jms-4.0.xsd
+		http://www.springframework.org/schema/integration/jdbc http://www.springframework.org/schema/integration/jdbc/spring-integration-jdbc-4.3.xsd
+		http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc-4.3.xsd
+		http://www.springframework.org/schema/jee http://www.springframework.org/schema/jee/spring-jee-4.3.xsd
+		http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task-4.3.xsd
 		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
 		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.0.xsd
+		http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.3.xsd
 		http://www.springframework.org/schema/integration/jms http://www.springframework.org/schema/integration/jms/spring-integration-jms-4.3.xsd
-		http://www.springframework.org/schema/integration http://www.springframework.org/schema/integration/spring-integration-4.3.xsd">
+		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.3.xsd
+		http://www.springframework.org/schema/integration http://www.springframework.org/schema/integration/spring-integration-4.3.xsd
+		http://activemq.apache.org/schema/core http://activemq.apache.org/schema/core/activemq-core-5.13.4.xsd
+		http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-4.3.xsd">
 
-	<int:channel id="processEmpChannel">
-	 <!--  <int:interceptors>
-	    <int:wire-tap channel="logger"></int:wire-tap>
-	  </int:interceptors> -->
-	</int:channel>
-	
-	<!-- <int:logging-channel-adapter channel="logger" level="DEBUG" log-full-message="true"> </int:logging-channel-adapter> -->
-	
-	<!-- <int:channel id="logger"></int:channel> -->
+	<beans profile="dev">
+		<import resource="classpath:activemq-properties.xml" />
+		<import resource="classpath:activemq-jms.xml" />
+		<!-- Embedded ActiveMQ Broker -->
+		<!-- <amq:connectionFactory id="amqConnectionFactory" brokerURL="tcp://localhost:61616" 
+			userName="consumer" password="password" /> -->
 
-	<int:channel id="jmsInboundChannel"></int:channel>
+		<amq:broker id="broker" useJmx="false" persistent="false">
 
-	<int:channel id="ipParkMessageChannel"></int:channel>
+			<!-- <amq:plugins>
+				<amq:simpleAuthenticationPlugin>
+					<amq:users>
+						<amq:authenticationUser username="pradeep"
+							password="welcome" groups="producers,consumers,admins" />
+					</amq:users>
+				</amq:simpleAuthenticationPlugin>
+				<amq:authorizationPlugin>
+					<map>
+						<authorizationMap>
+						<amq:authorizationEntries></amq:authorizationEntries>
+						<amq:defaultEntry></amq:defaultEntry>
+						<amq:tempDestinationAuthorizationEntry></amq:tempDestinationAuthorizationEntry>
+						<amq:entries></amq:entries>
+						
+							<authorizationEntries>
+								<authorizationEntry queue="test" write="producers"
+									read="consumers" admin="admins" />
+								<authorizationEntry topic="ActiveMQ.Advisory.>"
+									read="producers" write="producers" admin="admins" />
+							</authorizationEntries>
+							<tempDestinationAuthorizationEntry>
+								<tempDestinationAuthorizationEntry
+									read="admin" write="admin" admin="admin" />
+							</tempDestinationAuthorizationEntry>
+						</authorizationMap>
+					</map>
+				</amq:authorizationPlugin>
+			</amq:plugins> -->
+			<amq:transportConnectors>
+				<amq:transportConnector uri="tcp://localhost:61616" />
+			</amq:transportConnectors>
+            
+		</amq:broker>
+		<jdbc:embedded-database id="dataSource" type="HSQL">
+			<jdbc:script location="classpath:create-db.sql" />
+		</jdbc:embedded-database>
+		<bean depends-on="dataSource"
+			class="org.springframework.beans.factory.config.MethodInvokingBean">
+			<property name="targetClass" value="org.hsqldb.util.DatabaseManagerSwing" />
+			<property name="targetMethod" value="main" />
+			<property name="arguments">
+				<list>
+					<value>--url</value>
+					<value>jdbc:hsqldb:mem:dataSource</value>
+					<value>--user</value>
+					<value>sa</value>
+					<value>--password</value>
+					<value></value>
+				</list>
+			</property>
+		</bean>
+	</beans>
+	<beans profile="qa">
+		<import resource="classpath:activemq-properties.xml" />
+		<import resource="classpath:activemq-jms.xml" />
+	</beans>
+	<beans>
+		<!-- Logger channel for logging the incoming payload to the log file -->
+		<int:channel id="logger"></int:channel>
 
-	<int:channel id="deleteF5MessageChannel"></int:channel>
+		<int:channel id="ipParkMessageChannel"></int:channel>
 
-	<int:channel id="deleteACLMessageChannel"></int:channel>
+		<int:channel id="deleteF5MessageChannel"></int:channel>
 
-	<int-jms:message-driven-channel-adapter
-		channel="processEmpChannel" destination-name="com.test.inputqueue"
-		acknowledge="transacted"  />
+		<int:channel id="deleteACLMessageChannel"></int:channel>
 
-
-	<int:router input-channel="processEmpChannel"
-	expression="#jsonPath(payload,'$.action_name')">
-		<int:mapping value="IPPark" channel="ipParkMessageChannel" />
-		<int:mapping value="LTMdecomm" channel="deleteF5MessageChannel" />
-		<int:mapping value="Delete_ACL" channel="deleteACLMessageChannel" />
-	</int:router>
+		<int:publish-subscribe-channel id="processDLChannel"></int:publish-subscribe-channel>
 
 
-	<bean id="connectionFactory"
-		class="org.springframework.jms.connection.CachingConnectionFactory">
-		<property name="targetConnectionFactory" ref="targetConnectionFactory"></property>
-		<property name="sessionCacheSize" value="10"></property>
-		<property name="cacheProducers" value="false"></property>
-	</bean>
-	<bean id="targetConnectionFactory" class="org.apache.activemq.ActiveMQConnectionFactory">
-		<property name="brokerURL" value="tcp://localhost:61616"></property>
-		<property name="redeliveryPolicy">
-			<bean class="org.apache.activemq.RedeliveryPolicy">
-				<property name="maximumRedeliveries" value="5" />
-			</bean>
-		</property>
-	</bean>
+		<int-jms:message-driven-channel-adapter
+			channel="processEmpChannel" destination-name="Intuit.global.dev.pi.computereturns.NetgenieV1.Queue"
+			acknowledge="transacted" />
 
-	<bean id="jmsTemplate" class="org.springframework.jms.core.JmsTemplate">
-		<property name="connectionFactory" ref="connectionFactory"></property>
-		<property name="sessionTransacted" value="true"></property>
-	</bean>
+		<int-jms:message-driven-channel-adapter
+			channel="processDLChannel" destination-name="Intuit.global.dev.pi.computereturns.NetgenieV1.Queue.DLQ"
+			acknowledge="auto" />
 
-	<bean id="springExample" class="com.jms.spring.integration.SpringIntegrationJmsExample">
-		<property name="jmsTemplate" ref="jmsTemplate"></property>
-	</bean>
 
-	<int:service-activator input-channel="ipParkMessageChannel"
-		ref="springExample" method="handleIPPark">
-	</int:service-activator>
+		<int:channel id="processEmpChannel">
+			<int:interceptors>
+				<int:wire-tap channel="logger"></int:wire-tap>
+			</int:interceptors>
+		</int:channel>
 
-	<int:service-activator input-channel="deleteF5MessageChannel"
-		ref="springExample" method="handleDeleteF5FromDevice">
-	</int:service-activator>
-	<int:service-activator input-channel="deleteACLMessageChannel"
-		ref="springExample" method="deleteACLMessageChannel">
-	</int:service-activator>
+		<int:logging-channel-adapter channel="logger"
+			logger-name="JMS" level="INFO" log-full-message="true">
+		</int:logging-channel-adapter>
+
+		<int:router input-channel="processEmpChannel"
+			expression="#jsonPath(payload,'$.action_name')">
+			<int:mapping value="IPPark" channel="ipParkMessageChannel" />
+			<int:mapping value="LTMdecomm" channel="deleteF5MessageChannel" />
+			<int:mapping value="Delete_ACL" channel="deleteACLMessageChannel" />
+		</int:router>
+
+		<!-- <bean id="ctargetConnectionFactory" class="org.springframework.jms.connection.CachingConnectionFactory"> 
+			<property name="targetConnectionFactory" ref="jmsConnectionFactory"></property> 
+			<property name="sessionCacheSize" value="10"></property> <property name="cacheProducers" 
+			value="false"></property> </bean> -->
+		<bean id="connectionFactory" class="org.apache.activemq.ActiveMQConnectionFactory">
+			<property name="brokerURL" value="tcp://localhost:61616" />
+			<!-- <property name="userName" value="Intuit.platform.computereturns.computereturnsnetgenieconsumer" 
+				/> <property name="password" value="preprdbtFkWCFAgoFCoqt8kMIPLCMAvrNVowiU9f"></property> -->
+			<property name="redeliveryPolicy">
+				<bean class="org.apache.activemq.RedeliveryPolicy">
+					<property name="maximumRedeliveries" value="7" />
+				</bean>
+			</property>
+		</bean>
+
+		<bean id="springExample" class="com.jms.spring.integration.SpringIntegrationJmsExample">
+		</bean>
+		<context:annotation-config />
+
+		<bean class="com.intuit.jms.spring.appconfig.AppConfig" />
+
+		<int:chain input-channel="ipParkMessageChannel">
+			<int:json-to-object-transformer
+				type="com.intuit.pi.automation.compute.returns.message.queue.parser.PayloadHeader" />
+			<int:service-activator ref="springExample"
+				method="handleIPPark" />
+		</int:chain>
+
+		<int:chain input-channel="deleteF5MessageChannel">
+			<int:json-to-object-transformer
+				type="com.intuit.pi.automation.compute.returns.message.queue.parser.PayloadHeader" />
+			<int:service-activator ref="springExample"
+				method="handleDeleteF5FromDevice" />
+		</int:chain>
+
+		<int:chain input-channel="deleteACLMessageChannel">
+			<int:json-to-object-transformer
+				type="com.intuit.pi.automation.compute.returns.message.queue.parser.PayloadHeader" />
+			<int:service-activator ref="springExample"
+				method="deleteACLMessageChannel" />
+		</int:chain>
+
+		<int:logging-channel-adapter channel="processDLChannel"
+			logger-name="JMS_DLQ" level="INFO" log-full-message="true">
+		</int:logging-channel-adapter>
+
+
+		<int-jdbc:outbound-channel-adapter
+			query="insert into NetworkMessageDLQ (time, message) values (CURRENT_TIMESTAMP, :payload)"
+			data-source="dataSource" channel="processDLChannel" />
+	</beans>
 </beans>
